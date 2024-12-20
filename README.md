@@ -21,3 +21,5 @@ will launch a webUI running at http://localhost:8501.
 4. Specify an output directory on the server (ie. output/myrun1)
 5. Click 'Start Training'
 6. When complete, download model files (`model.pt`, `loss.pt`) using UI or copy from output directory.
+
+![Demo](lantern_demo.gif)
