@@ -13,6 +13,7 @@ import numpy as np
 from sklearn import preprocessing
 import os
 
+
 def train_lantern(
     loader, optimizer, loss, model, epochs, output_dir
 ):
@@ -22,6 +23,10 @@ def train_lantern(
     try:
         with st.spinner("Training..."):
             pbar = st.progress(0)
+            lossdata = pd.DataFrame(columns=['epoch', 'loss'])
+            # Updates graph per epoch
+            placeholder = st.empty()
+
             for e in range(epochs):
 
                 # logging of loss values
@@ -55,8 +60,14 @@ def train_lantern(
 
                 # update log
                 pbar.progress((e + 1) / epochs)
-                if e % 10 == 0:
-                    st.write(f"Epoch {e+1}, Loss: {tloss / len(loader)}")
+                current_loss = {'epoch':e, 'loss': tloss / len(loader)}
+                lossdata.loc[len(lossdata)] = current_loss
+                
+                with placeholder.container():
+                    chart = st.line_chart(lossdata, x='epoch', y='loss')
+
+                    if e % 10 == 0:
+                        note = st.write(f"Epoch {e+1}, Loss: {tloss / len(loader)}")
 
             # Save training results
             torch.save(model.state_dict(), os.path.join(output_dir, "model.pt"))
