@@ -1,3 +1,7 @@
+"""
+Streamlit WebUI for training LANTERN models
+Dec 2024
+"""
 import streamlit as st
 from lantern.dataset import Dataset
 from lantern.model import Model
@@ -5,14 +9,24 @@ from lantern.model.basis import VariationalBasis
 from lantern.model.surface import Phenotype
 from lantern.model.likelihood import MultitaskGaussianLikelihood
 from lantern.loss import ELBO_GP
+import os
+os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
 import torch
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 import pandas as pd
 import numpy as np
-from sklearn import preprocessing
-import os
 
+
+# Compute device detection
+if torch.backends.mps.is_available():
+    device = "mps"
+    st.write("Training on MPS GPU.")
+elif torch.cuda.is_available():
+    device = "cuda"
+    st.write("Training on CUDA GPU.")
+else:
+    device = "cpu"
 
 def train_lantern(
     loader, optimizer, loss, model, epochs, output_dir
@@ -95,8 +109,8 @@ def main():
         error_cols = [col + "_var" for col in phenotype_cols]
 
         # Get training parameters
-        epochs = st.number_input("Number of Epochs", min_value=1, value=1000)
-        batch_size = 8192
+        epochs = st.number_input("Number of Epochs", min_value=1, value=1000, step=100)
+        batch_size = st.number_input("Batch Size", min_value=4096, value=8192, step=1024)
         lr = 0.01
 
         output_dir = st.text_input("Output Directory", value="output")
@@ -114,11 +128,11 @@ def main():
                 MultitaskGaussianLikelihood(len(phenotype_cols))
             )
 
-            if torch.cuda.is_available():
-                ds.to("cuda")
-                model = model.to("cuda")
+            if device != "cpu":
+                ds.to(device)
+                model = model.to(device)
             else:
-                print("WARNING: no cuda found")
+                print("WARNING: no accelerator found. Proceeding with CPU.")
 
             loss = model.basis.loss(N=len(ds),) + ELBO_GP.fromModel(
                 model, len(ds),
